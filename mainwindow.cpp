@@ -57,82 +57,14 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QString>
-#include <QJsonArray> //might not actually use
-#include <QAbstractListModel>
-#include <QHash>
+
+#include <QQmlEngine>
+#include <QQmlComponent>
+#include <QQmlProperty>
 
 bool buttonPress = false;
 
-class TransferValue : public QObject {
 
-};
-Q_DECLARE_METATYPE(TransferValue*)
-
-class TransferValueList : public QAbstractListModel{
-    Q_OBJECT
-
-public:
-    enum ValTypes {
-        RPM = Qt::UserRole+1,
-        others
-    };
-
-    explicit TransferValueList(QObject *parent = 0);
-    ~TransferValueList();
-
-    void add(QString aName, int theValue);
-    int rowCount(const QModelIndex& parent = QModelIndex()) const override;
-    QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
-
-public slots:
-    TransferValue* transferValue(int idx);
-
-protected:
-    QHash<int, QByteArray> roleNames() const;
-
-private:
-    QList<TransferValue*> mTransferValue;
-};
-
-QHash<int, QByteArray> TransferValueList::roleNames() const
-{
-    QHash<int, QByteArray> val;
-    val[RPM]="hi";
-    val[others]="testing";
-    return val;
-}
-
-void TransferValueList::add(QString aName, int theValue) {
-    beginInsertRows(QModelIndex(), rowCount(), rowCount());
-    //mTransferValue << objectCreated;
-    endInsertRows();
-}
-
-int TransferValueList::rowCount(const QModelIndex& parent) const
-{
-    return mTransferValue.count();
-}
-
-QVariant TransferValueList::data(const QModelIndex& index, int role) const
-{
-    int i = index.row();
-    if (i < 0 || i >= mTransferValue.size())
-        return QVariant(QVariant::Invalid);
-    TransferValue* value = mTransferValue[i];
-    if(role == RPM) {
-        //return QVariant::fromValue(value);
-    }
-
-    return QVariant::fromValue(mTransferValue[i]);
-}
-
-TransferValue* TransferValueList::transferValue(int idx)
-{
-    if (idx < 0 || idx >= mTransferValue.size())
-        return nullptr;
-
-    return mTransferValue[idx];
-}
 
 
 
@@ -312,10 +244,19 @@ QVariant TestModel::headerData(int section, Qt::Orientation orientation, int rol
 
 void MainWindow::inputData(const QByteArray &data)
 {
+    QQmlEngine engine;
+    QQmlComponent component(&engine, QUrl(QStringLiteral("qrc:/ValueSource.qml")));
+    QObject *object = component.create();
+
+    qDebug() << "property value:" << QQmlProperty::read(object, "test").toInt();
+    object->setProperty("test", 100);       ///TODO: value not saving in qml so it never gets output to screen
+    //QQmlProperty::write(object, "test", 100);
+    qDebug() << "property value:" << QQmlProperty::read(object, "test").toInt();
+
     QString dataString = QString(data);
     QList<QString> dataNames;
     QList<QString> dataNums;
-    QJsonArray testArray = {1, 2};
+    QList<QString> dataToSend;
 
     ///TODO: implement JSON parser
     //parse dataString
@@ -326,6 +267,9 @@ void MainWindow::inputData(const QByteArray &data)
         dataNames.append(list.at(i));
         i++;
         dataNums.append(list.at(i));
+        if(list.at(i-1) == "e"){
+            dataToSend.append(list.at(i));
+        }
     }
 
     //put QList into the tabel everytime inputData is called
@@ -335,7 +279,7 @@ void MainWindow::inputData(const QByteArray &data)
     m_ui->tableView->horizontalHeader()->setVisible(true);
     m_ui->tableView->show();
 
-
+    delete object;
 }
 
 void MainWindow::on_pushButton_clicked()

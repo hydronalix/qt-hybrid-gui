@@ -1,6 +1,7 @@
-import QtQuick 2.2
+import QtQuick 2.0
 
 Item {
+
     id: valueSource
     property real kph: 0
     property real rpm: 1
